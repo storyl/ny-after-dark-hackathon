@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { removeBackground } from "@imgly/background-removal";
-import { SketchPicker } from "react-color";
+import { ChromePicker } from "react-color";
 
 const AnimatedImageEditor = () => {
   const [image, setImage] = useState(null);
@@ -289,15 +289,11 @@ const AnimatedImageEditor = () => {
         }
 
         .export-button {
-          background-color: #3b82f6;
+          background-color: black;
           color: white;
           padding: 0.5rem 1rem;
           border-radius: 0.375rem;
           transition: background-color 0.2s;
-        }
-
-        .export-button:hover:not(:disabled) {
-          background-color: #2563eb;
         }
 
         .export-button:disabled {
@@ -308,8 +304,8 @@ const AnimatedImageEditor = () => {
 
       {/* Image Upload Area */}
       <div
-        className={`w-96 h-96 border-2 border-dashed border-gray-400 flex items-center justify-center cursor-pointer relative overflow-hidden ${
-          image ? "border-none" : "border-gray-400"
+        className={`w-96 h-96 border-2  rounded-lg border-gray-200 flex items-center justify-center cursor-pointer relative overflow-hidden ${
+          image ? "border-solid" : "border-dashed"
         } ${loading ? "animate-pulse" : ""}`}
         style={{
           backgroundColor: bgColor,
@@ -330,7 +326,7 @@ const AnimatedImageEditor = () => {
           <img 
             src={image} 
             alt="Uploaded" 
-            className="object-contain w-full h-full"
+            className="object-contain w-full h-full "
             style={getAnimationStyle()}
           />
         )}
@@ -370,7 +366,7 @@ const AnimatedImageEditor = () => {
                 onChange={(e) => setAnimationEnabled(e.target.checked)}
                 id="animation-toggle"
               />
-              <label htmlFor="animation-toggle">Enable Animation</label>
+              <label htmlFor="animation-toggle">View Animation</label>
             </div>
 
             <div className="space-y-4">
@@ -380,6 +376,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{animationConfig.duration}s</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="0.5"
                   max="5"
@@ -395,6 +392,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{animationConfig.fadeOpacity.start}</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="0"
                   max="1"
@@ -410,6 +408,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{animationConfig.fadeOpacity.end}</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="0"
                   max="1"
@@ -425,6 +424,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{animationConfig.scale.start}x</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="0.1"
                   max="2"
@@ -440,6 +440,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{animationConfig.scale.end}x</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="0.1"
                   max="2"
@@ -456,16 +457,16 @@ const AnimatedImageEditor = () => {
           <div className="control-container">
             <button
               onClick={handleRemoveBackground}
-              className="w-full bg-black text-white px-4 py-2 text-sm rounded mb-4"
+              className="w-full bg-black text-white px-4 py-2 rounded mb-4"
               disabled={loading}
             >
               {loading ? "Removing Background..." : "Remove Background"}
             </button>
 
-            <SketchPicker
+            <ChromePicker
               color={bgColor}
               onChange={(color) => setBgColor(color.hex)}
-              className="w-full"
+              className="w-full min-w-md"
             />
           </div>
         )}
@@ -479,6 +480,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{exportConfig.duration}s</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="1"
                   max="30"
@@ -497,6 +499,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{exportConfig.fps} fps</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="15"
                   max="60"
@@ -515,6 +518,7 @@ const AnimatedImageEditor = () => {
                   <span className="value-display">{Math.round(exportConfig.quality * 100)}%</span>
                 </label>
                 <input
+                  className='accent-current'
                   type="range"
                   min="0.1"
                   max="1"
