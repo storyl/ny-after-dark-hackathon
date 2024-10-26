@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { removeBackground } from "@imgly/background-removal";
-import { CirclePicker } from "react-color";
+import { SketchPicker } from "react-color";
 
 export default function Home() {
   const [image, setImage] = useState(null);
@@ -68,22 +68,21 @@ export default function Home() {
           className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
           onChange={handleFileChange}
         />
-        {!image && <p>Drag & Drop or Click to Upload</p>}
+        {!image && <p className="text-center text-gray-400">Drag & Drop or<br/>Click to Upload</p>}
         {image && <img src={image} alt="Uploaded" className="object-contain w-full h-full" />}
       </div>
 
       {/* Background removal and color picker */}
       <button
         onClick={handleRemoveBackground}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
+        className="bg-black text-white px-4 py-2 text-sm rounded"
         disabled={loading}
       >
         {loading ? "Removing Background..." : "Remove Background"}
       </button>
 
-      <div>
-        <p className="text-gray-700">Pick Background Color:</p>
-        <CirclePicker
+      <div className="w-full max-w-sm mx-auto flex items-center justify-center">
+        <SketchPicker
           color={bgColor}
           onChange={(color) => setBgColor(color.hex)}
         />
