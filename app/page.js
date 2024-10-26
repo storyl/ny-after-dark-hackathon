@@ -9,13 +9,19 @@ const AnimatedImageEditor = () => {
   const [loading, setLoading] = useState(false);
   const [bgColor, setBgColor] = useState("#ffffff");
   const [activeTab, setActiveTab] = useState('animation');
+  const [exporting, setExporting] = useState(false);
+  const [exportConfig, setExportConfig] = useState({
+    duration: 5,
+    fps: 30,
+    quality: 0.8
+  });
   
   // Animation controls
   const [animationEnabled, setAnimationEnabled] = useState(false);
   const [animationConfig, setAnimationConfig] = useState({
     duration: 2,
     fadeOpacity: {
-      start: 0,
+      start: 0.9,
       end: 1
     },
     scale: {
@@ -52,6 +58,151 @@ const AnimatedImageEditor = () => {
       console.error("Background removal failed", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateVideoFrames = async (img, duration, fps) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Set fixed canvas size to 1080x1080
+    canvas.width = 1080;
+    canvas.height = 1080;
+
+    const frames = [];
+    const totalFrames = duration * fps;
+    
+    for (let frame = 0; frame < totalFrames; frame++) {
+      const progress = (frame / totalFrames) % 1;
+      const reverse = Math.floor((frame / totalFrames) * 2) % 2 === 1;
+      const t = reverse ? 1 - progress : progress;
+
+      // Clear canvas
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate current animation values
+      const currentOpacity = animationConfig.fadeOpacity.start + 
+        (animationConfig.fadeOpacity.end - animationConfig.fadeOpacity.start) * t;
+      const currentScale = animationConfig.scale.start + 
+        (animationConfig.scale.end - animationConfig.scale.start) * t;
+
+      // Save context state
+      ctx.save();
+      
+      // Set opacity
+      ctx.globalAlpha = currentOpacity;
+
+      // Calculate scaled dimensions while maintaining aspect ratio
+      const scale = Math.min(
+        canvas.width / img.width,
+        canvas.height / img.height
+      ) * currentScale;
+
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+
+      // Center the image
+      const x = (canvas.width - scaledWidth) / 2;
+      const y = (canvas.height - scaledHeight) / 2;
+
+      // Draw the image
+      ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+      ctx.restore();
+
+      // Add frame to array
+      frames.push(canvas.toDataURL('image/jpeg', exportConfig.quality));
+    }
+
+    return frames;
+  };
+
+  const exportVideo = async () => {
+    if (!image || !animationEnabled) return;
+  
+    setExporting(true);
+    try {
+      // Load the image
+      const img = new Image();
+      img.src = image;
+      await img.decode();
+  
+      // Generate frames
+      const frames = await generateVideoFrames(
+        img,
+        exportConfig.duration,
+        exportConfig.fps
+      );
+  
+      // Create a canvas for the video
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+  
+      // Create video element
+      const videoElement = document.createElement('video');
+      videoElement.width = 1080;
+      videoElement.height = 1080;
+      videoElement.autoplay = true;
+  
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        videoElement.oncanplay = resolve;
+        // Set initial frame
+        if (frames.length > 0) {
+          const tempImage = new Image();
+          tempImage.onload = () => {
+            ctx.drawImage(tempImage, 0, 0);
+            videoElement.srcObject = canvas.captureStream(exportConfig.fps);
+          };
+          tempImage.src = frames[0];
+        }
+      });
+  
+      // Create MediaRecorder
+      const mediaRecorder = new MediaRecorder(canvas.captureStream(exportConfig.fps), {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 8000000 // 8 Mbps
+      });
+  
+      const chunks = [];
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'animation.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+        setExporting(false);
+      };
+  
+      mediaRecorder.start();
+  
+      // Play frames
+      let frameIndex = 0;
+      const playNextFrame = () => {
+        if (frameIndex < frames.length) {
+          const tempImage = new Image();
+          tempImage.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(tempImage, 0, 0);
+            frameIndex++;
+            setTimeout(playNextFrame, 1000 / exportConfig.fps);
+          };
+          tempImage.src = frames[frameIndex];
+        } else {
+          mediaRecorder.stop();
+        }
+      };
+  
+      playNextFrame();
+  
+    } catch (error) {
+      console.error('Export failed:', error);
+      setExporting(false);
     }
   };
 
@@ -136,6 +287,23 @@ const AnimatedImageEditor = () => {
           color: #718096;
           margin-left: 0.5rem;
         }
+
+        .export-button {
+          background-color: #3b82f6;
+          color: white;
+          padding: 0.5rem 1rem;
+          border-radius: 0.375rem;
+          transition: background-color 0.2s;
+        }
+
+        .export-button:hover:not(:disabled) {
+          background-color: #2563eb;
+        }
+
+        .export-button:disabled {
+          background-color: #9ca3af;
+          cursor: not-allowed;
+        }
       `}</style>
 
       {/* Image Upload Area */}
@@ -183,6 +351,12 @@ const AnimatedImageEditor = () => {
             onClick={() => setActiveTab('background')}
           >
             Background Controls
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'export' ? 'active' : ''}`}
+            onClick={() => setActiveTab('export')}
+          >
+            Export Controls
           </button>
         </div>
 
@@ -293,6 +467,78 @@ const AnimatedImageEditor = () => {
               onChange={(color) => setBgColor(color.hex)}
               className="w-full"
             />
+          </div>
+        )}
+
+        {activeTab === 'export' && (
+          <div className="control-container">
+            <div className="space-y-4">
+              <div className="slider-container">
+                <label>
+                  Video Duration (seconds)
+                  <span className="value-display">{exportConfig.duration}s</span>
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="30"
+                  step="1"
+                  value={exportConfig.duration}
+                  onChange={(e) => setExportConfig(prev => ({
+                    ...prev,
+                    duration: parseInt(e.target.value)
+                  }))}
+                />
+              </div>
+
+              <div className="slider-container">
+                <label>
+                  Frame Rate (FPS)
+                  <span className="value-display">{exportConfig.fps} fps</span>
+                </label>
+                <input
+                  type="range"
+                  min="15"
+                  max="60"
+                  step="1"
+                  value={exportConfig.fps}
+                  onChange={(e) => setExportConfig(prev => ({
+                    ...prev,
+                    fps: parseInt(e.target.value)
+                  }))}
+                />
+              </div>
+
+              <div className="slider-container">
+                <label>
+                Quality
+                  <span className="value-display">{Math.round(exportConfig.quality * 100)}%</span>
+                </label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.1"
+                  value={exportConfig.quality}
+                  onChange={(e) => setExportConfig(prev => ({
+                    ...prev,
+                    quality: parseFloat(e.target.value)
+                  }))}
+                />
+              </div>
+
+              <button
+                onClick={exportVideo}
+                className="export-button w-full"
+                disabled={!image || !animationEnabled || exporting}
+              >
+                {exporting ? 'Exporting...' : 'Export Animation'}
+              </button>
+
+              <p className="text-sm text-gray-500 mt-2">
+                Export will create a 1080x1080 video with your current animation settings
+              </p>
+            </div>
           </div>
         )}
       </div>
