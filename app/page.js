@@ -234,7 +234,8 @@ const AnimatedImageEditor = () => {
   };
 
   return (
-    <div className="flex flex-col items-center p-8 space-y-6 max-w-4xl mx-auto">
+    <div className='flex flex-row'>
+    <div className="flex flex-col items-center p-8 space-y-6 max-w-xl ">
       <style jsx global>{`
         @keyframes imageAnimation {
           from {
@@ -546,6 +547,8 @@ const AnimatedImageEditor = () => {
           </div>
         )}
       </div>
+    </div>
+    <div className='w-full h-full bg-red-400 m-8'>animation previews go here</div>
     </div>
   );
 };
