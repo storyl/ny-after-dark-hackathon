@@ -381,7 +381,7 @@ const AnimatedImageEditor = () => {
             className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
             onChange={handleFileChange}
           />
-          {!image && <p className="text-center text-gray-400">Drag & Drop or<br/>Click to Upload</p>}
+          {!image && <p className="text-center text-black font-bold">Drag & Drop or<br/>Click to Upload</p>}
           {image && (
             <img 
               src={image} 
@@ -506,7 +506,7 @@ const AnimatedImageEditor = () => {
 
       {/* Animation Previews Grid */}
       <div className="flex flex-col bg-gray-50 p-8 rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Select animations to export</h2>
+        <h2 className="text-xl text-gray-400 font-semibold mb-4">Select animations to export</h2>
 
         <div className="flex flex-wrap gap-4">
           {Object.entries(ANIMATIONS).map(([key, animation]) => (
