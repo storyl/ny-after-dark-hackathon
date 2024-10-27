@@ -439,6 +439,7 @@ const AnimatedImageEditor = () => {
                     <span className="value-display">{exportConfig.duration}s</span>
                   </label>
                   <input
+                    className="accent-current"
                     type="range"
                     min="1"
                     max="30"
@@ -458,6 +459,7 @@ const AnimatedImageEditor = () => {
                   </label>
                   <input
                     type="range"
+                    className="accent-current"
                     min="15"
                     max="60"
                     step="1"
@@ -476,6 +478,7 @@ const AnimatedImageEditor = () => {
                   </label>
                   <input
                     type="range"
+                    className="accent-current"
                     min="0.1"
                     max="1"
                     step="0.1"
