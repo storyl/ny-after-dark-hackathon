@@ -425,7 +425,7 @@ const AnimatedImageEditor = () => {
               <ChromePicker
                 color={bgColor}
                 onChange={(color) => setBgColor(color.hex)}
-                className="w-full"
+                className="!w-full"
               />
             </div>
           )}
