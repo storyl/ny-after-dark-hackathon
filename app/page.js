@@ -1,107 +1,81 @@
 'use client'
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { removeBackground } from "@imgly/background-removal";
 import { ChromePicker } from "react-color";
 import { FiDownload } from "react-icons/fi";
 import { MdOutlineSettings } from "react-icons/md";
 
-// Predefined animations
 const ANIMATIONS = {
-  pulse: {
-    name: "Pulse",
-    config: {
-      duration: 2,
-      fadeOpacity: { start: 0.7, end: 1 },
-      scale: { start: 0.95, end: 1.05 }
-    }
+  wobble: {
+    name: "Wobble",
+    className: "wobble-hor-bottom"
   },
-  breathe: {
-    name: "Breathe",
-    config: {
-      duration: 3,
-      fadeOpacity: { start: 0.8, end: 1 },
-      scale: { start: 0.9, end: 1.1 }
-    }
+  shake: {
+    name: "Shake",
+    className: "shake-horizontal"
   },
-  bounce: {
-    name: "Bounce",
-    config: {
-      duration: 1.5,
-      fadeOpacity: { start: 1, end: 1 },
-      scale: { start: 0.9, end: 1 }
-    }
+  rotateIn: {
+    name: "Rotate In",
+    className: "rotate-in-2-cw"
   },
-  fade: {
-    name: "Fade",
-    config: {
-      duration: 2,
-      fadeOpacity: { start: 0.5, end: 1 },
-      scale: { start: 1, end: 1 }
-    }
+  scaleIn: {
+    name: "Scale In",
+    className: "scale-in-center"
   },
-  zoom: {
-    name: "Zoom",
-    config: {
-      duration: 2.5,
-      fadeOpacity: { start: 1, end: 1 },
-      scale: { start: 0.8, end: 1.2 }
-    }
+  pulseLight: {
+    name: "Pulse Light",
+    className: "pulse-light"
   },
-  subtle: {
-    name: "Subtle",
-    config: {
-      duration: 2,
-      fadeOpacity: { start: 0.95, end: 1 },
-      scale: { start: 0.98, end: 1.02 }
-    }
+  pulseStrong: {
+    name: "Pulse Strong",
+    className: "pulse-strong"
+  },
+  fadeIn: {
+    name: "Fade In",
+    className: "fade-in"
+  },
+  slideUp: {
+    name: "Slide Up",
+    className: "slide-in-bottom"
+  },
+  slideDown: {
+    name: "Slide Down",
+    className: "slide-in-top"
+  },
+  bounceIn: {
+    name: "Bounce In",
+    className: "bounce-in-fwd"
+  },
+  swingIn: {
+    name: "Swing In",
+    className: "swing-in-top-fwd"
   }
 };
 
 const AnimationPreview = ({ image, animation, bgColor, selected, onSelect }) => {
-  const { config } = animation;
-  
-  const animationStyle = {
-    animation: `${config.duration}s infinite alternate ease-in-out`,
-    animationName: `animation-${animation.name.toLowerCase()}`,
-  };
-
   return (
     <div 
       className={`relative w-48 h-48 m-2 cursor-pointer rounded-lg overflow-hidden
         ${selected ? 'ring-4 ring-green-500' : 'ring-1 ring-gray-200'}`}
       onClick={onSelect}
     >
-      <style jsx>{`
-        @keyframes animation-${animation.name.toLowerCase()} {
-          from {
-            opacity: ${config.fadeOpacity.start};
-            transform: scale(${config.scale.start});
-          }
-          to {
-            opacity: ${config.fadeOpacity.end};
-            transform: scale(${config.scale.end});
-          }
-        }
-      `}</style>
-      
       <div 
-  className="w-full h-full flex items-center justify-center"
-  style={{ backgroundColor: image ? bgColor : '#E5E7EB' }}
->
-  {image ? (
-    <img 
-      src={image} 
-      alt={animation.name}
-      className="w-full h-full object-contain"
-      style={animationStyle}
-    />
-  ) : (
-    <div className="text-gray-400 text-sm text-center p-4">
-      Upload an image<br/>to preview
-    </div>
-  )}
-</div>
+        className="w-full h-full flex items-center justify-center"
+        style={{ backgroundColor: image ? bgColor : '#E5E7EB' }}
+      >
+        {image ? (
+          <img 
+            src={image} 
+            alt={animation.name}
+            className={`w-full h-full object-contain ${animation.className}`}
+          />
+        ) : (
+          <div className="text-gray-400 text-sm text-center p-4">
+            Upload an image<br/>to preview
+          </div>
+        )}
+      </div>
 
       <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-30 text-white p-2 text-sm text-center">
         {animation.name}
