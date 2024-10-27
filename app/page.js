@@ -361,7 +361,7 @@ const AnimatedImageEditor = () => {
 
           {/* Tab Content */}
           {activeTab === 'background' && (
-            <div className="control-container">
+            <div className="control-container flex flex-col items-center">
               <button
                 onClick={handleRemoveBackground}
                 className="w-full bg-black text-white px-4 py-2 rounded mb-4"
@@ -440,7 +440,7 @@ const AnimatedImageEditor = () => {
                   className="export-button w-full"
                   disabled={!image || selectedAnimations.size === 0 || exporting}
                 >
-                  {exporting ? 'Exporting...' : `Export ${selectedAnimations.size} Animation${selectedAnimations.size !== 1 ? 's' : ''}`}
+                  {exporting ? 'Exporting...' : `Export ${selectedAnimations.size} Video${selectedAnimations.size !== 1 ? 's' : ''} `}
                 </button>
 
                 <p className="text-sm text-gray-500 mt-2">
