@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { removeBackground } from "@imgly/background-removal";
 import { ChromePicker } from "react-color";
+import { FiDownload } from "react-icons/fi";
+import { MdOutlineSettings } from "react-icons/md";
 
 // Predefined animations
 const ANIMATIONS = {
@@ -67,7 +69,7 @@ const AnimationPreview = ({ image, animation, bgColor, selected, onSelect }) => 
   return (
     <div 
       className={`relative w-48 h-48 m-2 cursor-pointer rounded-lg overflow-hidden
-        ${selected ? 'ring-4 ring-blue-500' : 'ring-1 ring-gray-200'}`}
+        ${selected ? 'ring-4 ring-green-500' : 'ring-1 ring-gray-200'}`}
       onClick={onSelect}
     >
       <style jsx>{`
@@ -101,7 +103,7 @@ const AnimationPreview = ({ image, animation, bgColor, selected, onSelect }) => 
   )}
 </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2 text-center">
+      <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-30 text-white p-2 text-sm text-center">
         {animation.name}
       </div>
     </div>
@@ -213,7 +215,7 @@ const AnimatedImageEditor = () => {
       const img = new Image();
       img.src = image;
       await img.decode();
-
+  
       for (const animationKey of selectedAnimations) {
         const frames = await generateVideoFrames(
           img,
@@ -221,71 +223,81 @@ const AnimatedImageEditor = () => {
           exportConfig.duration,
           exportConfig.fps
         );
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1080;
-        const ctx = canvas.getContext('2d');
-
-        const videoElement = document.createElement('video');
-        videoElement.width = 1080;
-        videoElement.height = 1080;
-        videoElement.autoplay = true;
-
-        await new Promise((resolve) => {
-          videoElement.oncanplay = resolve;
-          if (frames.length > 0) {
-            const tempImage = new Image();
-            tempImage.onload = () => {
-              ctx.drawImage(tempImage, 0, 0);
-              videoElement.srcObject = canvas.captureStream(exportConfig.fps);
-            };
-            tempImage.src = frames[0];
-          }
-        });
-
-        const mediaRecorder = new MediaRecorder(canvas.captureStream(exportConfig.fps), {
-          mimeType: 'video/webm;codecs=vp9',
-          videoBitsPerSecond: 8000000
-        });
-
-        const chunks = [];
-        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `animation-${animationKey}.webm`;
-          a.click();
-          URL.revokeObjectURL(url);
-        };
-
-        mediaRecorder.start();
-
-        let frameIndex = 0;
-        const playNextFrame = () => {
-          if (frameIndex < frames.length) {
-            const tempImage = new Image();
-            tempImage.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              ctx.drawImage(tempImage, 0, 0);
-              frameIndex++;
-              setTimeout(playNextFrame, 1000 / exportConfig.fps);
-            };
-            tempImage.src = frames[frameIndex];
-          } else {
-            mediaRecorder.stop();
-          }
-        };
-
-        playNextFrame();
-        
-        // Wait for the export to complete before starting the next one
-        await new Promise(resolve => {
-          mediaRecorder.onstop = () => {
-            resolve();
+  
+        // Create a promise that resolves when the video is fully exported
+        await new Promise(async (resolveExport) => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1080;
+          canvas.height = 1080;
+          const ctx = canvas.getContext('2d');
+  
+          // Set up video element
+          const videoElement = document.createElement('video');
+          videoElement.width = 1080;
+          videoElement.height = 1080;
+          videoElement.autoplay = true;
+  
+          // Set up media recorder
+          const stream = canvas.captureStream(exportConfig.fps);
+          const mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'video/webm;codecs=vp9',
+            videoBitsPerSecond: 8000000
+          });
+  
+          const chunks = [];
+          
+          // Handle data available event
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              chunks.push(e.data);
+            }
           };
+  
+          // Handle recording stop
+          mediaRecorder.onstop = () => {
+            // Create and download the video file
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `animation-${animationKey}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // Resolve the export promise
+            resolveExport();
+          };
+  
+          // Start recording
+          mediaRecorder.start();
+  
+          // Function to play frames
+          let frameIndex = 0;
+          const playNextFrame = () => {
+            if (frameIndex < frames.length) {
+              const tempImage = new Image();
+              tempImage.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(tempImage, 0, 0);
+                frameIndex++;
+                setTimeout(playNextFrame, 1000 / exportConfig.fps);
+              };
+              tempImage.src = frames[frameIndex];
+            } else {
+              mediaRecorder.stop();
+            }
+          };
+  
+          // Draw the first frame and start the animation
+          const firstFrame = new Image();
+          firstFrame.onload = () => {
+            ctx.drawImage(firstFrame, 0, 0);
+            videoElement.srcObject = stream;
+            playNextFrame();
+          };
+          firstFrame.src = frames[0];
         });
       }
     } catch (error) {
@@ -296,7 +308,7 @@ const AnimatedImageEditor = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row p-4 gap-8">
+    <div className="flex flex-col lg:flex-row p-8 pl-[5%] pr-[5%] gap-8">
       <div className="flex flex-col items-center space-y-6 max-w-xl">
         {/* Image Upload Area */}
         <div
@@ -332,16 +344,18 @@ const AnimatedImageEditor = () => {
           {/* Tab Buttons */}
           <div className="flex mb-4">
             <button
-              className={`tab-button ${activeTab === 'background' ? 'active' : ''}`}
+              className={`tab-button whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'background' ? 'active' : ''}`}
               onClick={() => setActiveTab('background')}
             >
-              Background Controls
+              Background Settings
+              <MdOutlineSettings size={18} />
             </button>
             <button
-              className={`tab-button ${activeTab === 'export' ? 'active' : ''}`}
+              className={`tab-button flex items-center justify-center gap-2 ${activeTab === 'export' ? 'active' : ''}`}
               onClick={() => setActiveTab('export')}
             >
-              Export Controls
+              Export Video
+              <FiDownload size={18} />
             </button>
           </div>
 
@@ -439,12 +453,10 @@ const AnimatedImageEditor = () => {
       </div>
 
       {/* Animation Previews Grid */}
-      <div className="flex-1 bg-gray-50 p-6 rounded-lg">
-        <h2 className="text-xl font-semibold mb-4">Animation Previews</h2>
-        <p className="text-gray-600 mb-4">
-          Select animations to export by clicking on them. Selected animations will have a blue border.
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="flex flex-col bg-gray-50 p-8 rounded-lg">
+        <h2 className="text-xl font-semibold mb-4">Select animations to export</h2>
+
+        <div className="flex flex-wrap gap-4">
           {Object.entries(ANIMATIONS).map(([key, animation]) => (
             <AnimationPreview
               key={key}
@@ -461,10 +473,11 @@ const AnimatedImageEditor = () => {
       <style jsx global>{`
         .tab-button {
           padding: 0.5rem 1rem;
-          border: 1px solid #e2e8f0;
+          border-radius: 0.25rem;
           background: white;
           cursor: pointer;
           transition: all 0.2s;
+          width: 100%;
         }
 
         .tab-button.active {
