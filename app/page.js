@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { removeBackground } from "@imgly/background-removal";
 import { ChromePicker } from "react-color";
 import { FiDownload } from "react-icons/fi";
@@ -35,6 +35,10 @@ const ANIMATIONS = {
     name: "Fade In",
     className: "fade-in"
   },
+  Jello: {
+    name: "Jello",
+    className: "jello-horizontal"
+  },
   slideUp: {
     name: "Slide Up",
     className: "slide-in-bottom"
@@ -51,6 +55,137 @@ const ANIMATIONS = {
     name: "Swing In",
     className: "swing-in-top-fwd"
   }
+};
+
+// Move video export functions outside component
+const generateVideoFrames = async (img, bgColor, exportConfig, animationClassName) => {
+  if (typeof window === 'undefined') return [];
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 1080;
+  canvas.height = 1080;
+
+  const frames = [];
+  const totalFrames = exportConfig.duration * exportConfig.fps;
+  
+  // Animation parameters based on the animation type
+  const getAnimationTransform = (progress, animationType) => {
+    switch (animationType) {
+      case 'wobble-hor-bottom':
+        const wobbleX = Math.sin(progress * Math.PI * 4) * 50;
+        const wobbleRotate = Math.sin(progress * Math.PI * 4) * 15;
+        return { translateX: wobbleX, rotate: wobbleRotate, scale: 1 };
+      
+      case 'shake-horizontal':
+        const shakeX = Math.sin(progress * Math.PI * 8) * 30;
+        return { translateX: shakeX, rotate: 0, scale: 1 };
+      
+      case 'rotate-in-2-cw':
+        const rotateAngle = progress * 360;
+        return { translateX: 0, rotate: rotateAngle, scale: 1 };
+      
+      case 'scale-in-center':
+        const scaleValue = 0.5 + progress;
+        return { translateX: 0, rotate: 0, scale: scaleValue };
+      
+      case 'pulse-light':
+        const pulseScale = 0.9 + (Math.sin(progress * Math.PI * 2) * 0.2);
+        return { translateX: 0, rotate: 0, scale: pulseScale };
+      
+      case 'pulse-strong':
+        const strongPulseScale = 0.8 + (Math.sin(progress * Math.PI * 2) * 0.4);
+        return { translateX: 0, rotate: 0, scale: strongPulseScale };
+      
+      case 'fade-in':
+        return { translateX: 0, rotate: 0, scale: 1, opacity: progress };
+      
+      case 'jello-horizontal':
+        const jelloProgress = progress * 8;
+        const jelloScale = {
+          x: 1 + Math.sin(jelloProgress * Math.PI) * 0.4,
+          y: 1 - Math.sin(jelloProgress * Math.PI) * 0.4
+        };
+        return { translateX: 0, rotate: 0, scaleX: jelloScale.x, scaleY: jelloScale.y };
+      
+      case 'slide-in-bottom':
+        const slideY = Math.sin(progress * Math.PI * 2) * 100;
+        return { translateX: 0, translateY: slideY, rotate: 0, scale: 1 };
+      
+      case 'slide-in-top':
+        const slideTopY = -Math.sin(progress * Math.PI * 2) * 100;
+        return { translateX: 0, translateY: slideTopY, rotate: 0, scale: 1 };
+      
+      case 'bounce-in-fwd':
+        const bounceProgress = progress * Math.PI * 2;
+        const bounceScale = 0.8 + Math.abs(Math.sin(bounceProgress)) * 0.4;
+        return { translateX: 0, rotate: 0, scale: bounceScale };
+      
+      case 'swing-in-top-fwd':
+        const swingRotate = Math.sin(progress * Math.PI * 2) * 45;
+        return { translateX: 0, rotate: swingRotate, scale: 1, transformOrigin: 'top' };
+      
+      default:
+        return { translateX: 0, rotate: 0, scale: 1 };
+    }
+  };
+
+  for (let frame = 0; frame < totalFrames; frame++) {
+    const progress = ((Math.sin(frame / totalFrames * Math.PI * 2) + 1) / 2);
+    
+    // Get animation transform for current frame
+    const transform = getAnimationTransform(progress, animationClassName);
+    
+    // Clear canvas and fill background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Save context state
+    ctx.save();
+    
+    // Move to center of canvas
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    
+    // Apply transformations
+    if (transform.rotate) {
+      ctx.rotate((transform.rotate * Math.PI) / 180);
+    }
+    
+    if (transform.scale) {
+      ctx.scale(transform.scale, transform.scale);
+    } else if (transform.scaleX && transform.scaleY) {
+      ctx.scale(transform.scaleX, transform.scaleY);
+    }
+    
+    if (transform.translateX || transform.translateY) {
+      ctx.translate(transform.translateX || 0, transform.translateY || 0);
+    }
+    
+    // Calculate image dimensions
+    const scale = Math.min(
+      canvas.width / img.width,
+      canvas.height / img.height
+    ) * 0.8;
+    
+    const scaledWidth = img.width * scale;
+    const scaledHeight = img.height * scale;
+    
+    // Draw image centered
+    ctx.drawImage(
+      img, 
+      -scaledWidth / 2,
+      -scaledHeight / 2,
+      scaledWidth,
+      scaledHeight
+    );
+    
+    // Restore context state
+    ctx.restore();
+    
+    frames.push(canvas.toDataURL('image/jpeg', exportConfig.quality));
+  }
+
+  return frames;
 };
 
 const AnimationPreview = ({ image, animation, bgColor, selected, onSelect }) => {
@@ -85,6 +220,7 @@ const AnimationPreview = ({ image, animation, bgColor, selected, onSelect }) => 
 };
 
 const AnimatedImageEditor = () => {
+  const [mounted, setMounted] = useState(false);
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bgColor, setBgColor] = useState("#ffffff");
@@ -96,6 +232,11 @@ const AnimatedImageEditor = () => {
     fps: 30,
     quality: 0.8
   });
+
+  // Handle hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -135,144 +276,78 @@ const AnimatedImageEditor = () => {
     });
   };
 
-  const generateVideoFrames = async (img, animation, duration, fps) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 1080;
-    canvas.height = 1080;
-
-    const frames = [];
-    const totalFrames = duration * fps;
-    const config = ANIMATIONS[animation].config;
-    
-    for (let frame = 0; frame < totalFrames; frame++) {
-      const progress = (frame / totalFrames) % 1;
-      const reverse = Math.floor((frame / totalFrames) * 2) % 2 === 1;
-      const t = reverse ? 1 - progress : progress;
-
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const currentOpacity = config.fadeOpacity.start + 
-        (config.fadeOpacity.end - config.fadeOpacity.start) * t;
-      const currentScale = config.scale.start + 
-        (config.scale.end - config.scale.start) * t;
-
-      ctx.save();
-      ctx.globalAlpha = currentOpacity;
-
-      const scale = Math.min(
-        canvas.width / img.width,
-        canvas.height / img.height
-      ) * currentScale;
-
-      const scaledWidth = img.width * scale;
-      const scaledHeight = img.height * scale;
-
-      const x = (canvas.width - scaledWidth) / 2;
-      const y = (canvas.height - scaledHeight) / 2;
-
-      ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-      ctx.restore();
-
-      frames.push(canvas.toDataURL('image/jpeg', exportConfig.quality));
-    }
-
-    return frames;
-  };
-
   const exportSelectedVideos = async () => {
-    if (!image || selectedAnimations.size === 0) return;
+    if (!image || !mounted || selectedAnimations.size === 0) return;
     
     setExporting(true);
     try {
       const img = new Image();
       img.src = image;
       await img.decode();
-  
+
       for (const animationKey of selectedAnimations) {
+        // Generate frames with the correct animation className
         const frames = await generateVideoFrames(
-          img,
-          animationKey,
-          exportConfig.duration,
-          exportConfig.fps
+          img, 
+          bgColor, 
+          exportConfig,
+          ANIMATIONS[animationKey].className
         );
-  
-        // Create a promise that resolves when the video is fully exported
-        await new Promise(async (resolveExport) => {
-          const canvas = document.createElement('canvas');
-          canvas.width = 1080;
-          canvas.height = 1080;
-          const ctx = canvas.getContext('2d');
-  
-          // Set up video element
-          const videoElement = document.createElement('video');
-          videoElement.width = 1080;
-          videoElement.height = 1080;
-          videoElement.autoplay = true;
-  
-          // Set up media recorder
-          const stream = canvas.captureStream(exportConfig.fps);
-          const mediaRecorder = new MediaRecorder(stream, {
-            mimeType: 'video/webm;codecs=vp9',
-            videoBitsPerSecond: 8000000
-          });
-  
-          const chunks = [];
-          
-          // Handle data available event
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              chunks.push(e.data);
-            }
-          };
-  
-          // Handle recording stop
-          mediaRecorder.onstop = () => {
-            // Create and download the video file
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `animation-${animationKey}.webm`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            // Resolve the export promise
-            resolveExport();
-          };
-  
-          // Start recording
-          mediaRecorder.start();
-  
-          // Function to play frames
-          let frameIndex = 0;
-          const playNextFrame = () => {
-            if (frameIndex < frames.length) {
-              const tempImage = new Image();
-              tempImage.onload = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(tempImage, 0, 0);
-                frameIndex++;
-                setTimeout(playNextFrame, 1000 / exportConfig.fps);
-              };
-              tempImage.src = frames[frameIndex];
-            } else {
-              mediaRecorder.stop();
-            }
-          };
-  
-          // Draw the first frame and start the animation
-          const firstFrame = new Image();
-          firstFrame.onload = () => {
-            ctx.drawImage(firstFrame, 0, 0);
-            videoElement.srcObject = stream;
-            playNextFrame();
-          };
-          firstFrame.src = frames[0];
+
+        if (typeof window === 'undefined' || !frames.length) continue;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1080;
+        canvas.height = 1080;
+        
+        const stream = canvas.captureStream(exportConfig.fps);
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'video/webm;codecs=vp9',
+          videoBitsPerSecond: 8000000
         });
+
+        const chunks = [];
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `animation-${animationKey}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        mediaRecorder.start();
+
+        let frameIndex = 0;
+        const ctx = canvas.getContext('2d');
+        
+        const playNextFrame = () => {
+          if (frameIndex < frames.length) {
+            const tempImage = new Image();
+            tempImage.onload = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(tempImage, 0, 0);
+              frameIndex++;
+              setTimeout(playNextFrame, 1000 / exportConfig.fps);
+            };
+            tempImage.src = frames[frameIndex];
+          } else {
+            mediaRecorder.stop();
+          }
+        };
+
+        const firstFrame = new Image();
+        firstFrame.onload = () => {
+          ctx.drawImage(firstFrame, 0, 0);
+          playNextFrame();
+        };
+        firstFrame.src = frames[0];
       }
     } catch (error) {
       console.error('Export failed:', error);
@@ -281,6 +356,9 @@ const AnimatedImageEditor = () => {
     }
   };
 
+  if (!mounted) {
+    return null;
+  }
   return (
     <div className="flex flex-col lg:flex-row p-8 pl-[5%] pr-[5%] gap-8">
       <div className="flex flex-col items-center space-y-6 max-w-xl">
